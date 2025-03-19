@@ -7,6 +7,7 @@ import 'finance_provider.dart';
 import 'category_screen.dart';
 import 'finance_model.dart';
 import 'add_transaction_screen.dart';
+import 'transaction_chart.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _titleController = TextEditingController();
   final _amountController = TextEditingController();
   String _selectedType = 'Expense';
+  int _selectedDays = 7;
 
   @override
   void initState() {
@@ -34,9 +36,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final financeProvider = Provider.of<FinanceProvider>(context);
     final transactions = financeProvider.transactions;
     
-    double balance = transactions.fold(0, (sum, item) => 
-      item.type == 'Income' ? sum + item.amount : sum - item.amount);
-
     return Consumer<FinanceProvider>(
       builder: (context, finance, _) {
         return Scaffold(
@@ -60,14 +59,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       }
                     },
               ),
-
-              IconButton(onPressed: ()async{
-                await FirebaseAuth.instance.signOut();
-                Navigator.pushAndRemoveUntil(context,
-                 MaterialPageRoute(builder: (context) {
-                   return AuthScreen();
-                 },),  (v) =>false);
-              }, icon: Icon(Icons.logout))
+              IconButton(
+                onPressed: () async {
+                  context.read<FinanceProvider>().clearAllData();
+                  await FirebaseAuth.instance.signOut();
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => AuthScreen()),
+                    (v) => false,
+                  );
+                },
+                icon: const Icon(Icons.logout),
+              ),
             ],
           ),
           body: Column(
@@ -78,6 +81,37 @@ class _HomeScreenState extends State<HomeScreen> {
                   'Balance: ${NumberFormat.currency(symbol: '\$').format(finance.getMoney().toInt())}',
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Last 7 Days'),
+                      selected: _selectedDays == 7,
+                      onSelected: (selected) {
+                        if (selected) {
+                          setState(() => _selectedDays = 7);
+                        }
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    ChoiceChip(
+                      label: const Text('Last 30 Days'),
+                      selected: _selectedDays == 30,
+                      onSelected: (selected) {
+                        if (selected) {
+                          setState(() => _selectedDays = 30);
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              TransactionChart(
+                transactions: transactions,
+                daysToShow: _selectedDays,
               ),
               Expanded(
                 child: finance.isSyncing && finance.transactions.isEmpty
@@ -90,27 +124,29 @@ class _HomeScreenState extends State<HomeScreen> {
                             title: Text(transaction.title),
                             subtitle: Row(
                               children: [
-                                Text(transaction.category,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600
-                                ),),
-                                SizedBox(width: 8,),
+                                Text(
+                                  transaction.category,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
                                 Text(
                                   DateFormat.yMMMd().format(transaction.date),
                                   style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade700,
-                                  fontWeight: FontWeight.w600
-                                ),
+                                    fontSize: 12,
+                                    color: Colors.grey.shade700,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ],
                             ),
                             trailing: Text(
                               '${transaction.type == 'Income' ? '+' : ''}${NumberFormat.currency(symbol: '\$').format(transaction.amount)}',
                               style: TextStyle(
-                                color: transaction.type == 'Income' 
-                                    ? Colors.green 
+                                color: transaction.type == 'Income'
+                                    ? Colors.green
                                     : Colors.red,
                               ),
                             ),
@@ -128,9 +164,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: const Icon(Icons.add),
           ),
         );
-      }
+      },
     );
   }
-
-  
 }

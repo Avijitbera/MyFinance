@@ -1,3 +1,9 @@
+
+import 'package:isar/isar.dart';
+
+part 'finance_model.g.dart';
+
+@Collection()
 class Transaction {
   final String id;
   final double amount;
@@ -9,6 +15,7 @@ class Transaction {
   final String? recurrenceFrequency;
   final String? notificationTime;
   final String category;
+  Id isid = Isar.autoIncrement;
 
   Transaction({
     required this.id,
@@ -17,6 +24,7 @@ class Transaction {
     required this.date,
     required this.type,
     this.firestoreId,
+    this.isid = Isar.autoIncrement,
     this.isRecurring = false,
     this.recurrenceFrequency,
     this.notificationTime,
@@ -33,7 +41,9 @@ class Transaction {
       'isRecurring': isRecurring,
       'recurrenceFrequency': recurrenceFrequency,
       'notificationTime': notificationTime,
-      'category':category
+      'category':category,
+      'isid': isid,
+      'id':id
     };
   }
 
@@ -48,52 +58,9 @@ class Transaction {
       isRecurring: json['isRecurring'] ?? false,
       recurrenceFrequency: json['recurrenceFrequency'],
       notificationTime: json['notificationTime'],
-      category: json['category']
+      category: json['category'],
+      isid: json['isid'],
     );
   }
 }
 
-class Category {
-  final String id;
-  final String name;
-
-  final String userId;
-
-  Category({
-    required this.id,
-    required this.name,
-  
-    required this.userId,
-  });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'name': name,
-      
-      'userId': userId,
-    };
-  }
-
-  Category copyWith({
-    String? id,
-    String? name,
-    String? type,
-    String? userId,
-  }) {
-    return Category(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      
-      userId: userId ?? this.userId,
-    );
-  }
-
-  factory Category.fromMap(String id, Map<String, dynamic> map) {
-    return Category(
-      id: id,
-      name: map['name'],
-     
-      userId: map['userId'],
-    );
-  }
-}

@@ -46,6 +46,7 @@ class AuthScreen extends StatelessWidget {
                           await authProvider.signInWithEmail(
                             _emailController.text,
                             _passwordController.text,
+                            context: context
                           );
                         }
                       },

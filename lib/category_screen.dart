@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:uuid/uuid.dart';
 
+import 'category_model.dart';
 import 'finance_provider.dart';
 import 'finance_model.dart';
 
@@ -21,43 +23,47 @@ class _CategoryScreenState extends State<CategoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<FinanceProvider>(context);
-    final categories = provider.categories;
+    // final provider = Provider.of<FinanceProvider>(context);
+    // final categories = provider.categories;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_editingCategory == null ? 'Add Category' : 'Edit Category'),
-        actions: [
-          if (_editingCategory == null)
-            IconButton(
-              icon: const Icon(Icons.add),
-              onPressed: () => _showCategoryDialog(context, provider),
-            ),
-        ],
-      ),
-      body: ListView.builder(
-        itemCount: categories.length,
-        itemBuilder: (context, index) {
-          final category = categories[index];
-          return ListTile(
-            title: Text(category.name),
-            // subtitle: Text(category.type),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+    return Consumer<FinanceProvider>(
+      builder: (context, finance, _) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(_editingCategory == null ? 'Add Category' : 'Edit Category'),
+            actions: [
+              if (_editingCategory == null)
                 IconButton(
-                  icon: const Icon(Icons.edit),
-                  onPressed: () => _showCategoryDialog(context, provider, category: category),
+                  icon: const Icon(Icons.add),
+                  onPressed: () => _showCategoryDialog(context, finance),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: () => provider.deleteCategory(category.id),
+            ],
+          ),
+          body: ListView.builder(
+            itemCount: finance.categories.length,
+            itemBuilder: (context, index) {
+              final category = finance.categories[index];
+              return ListTile(
+                title: Text(category.name),
+                // subtitle: Text(category.type),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () => _showCategoryDialog(context, finance, category: category),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: () => finance.deleteCategory(category),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          );
-        },
-      ),
+              );
+            },
+          ),
+        );
+      }
     );
   }
 
@@ -105,7 +111,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                       final user = FirebaseAuth.instance.currentUser;
                       if (user != null) {
                         final newCategory = Category(
-                          id: category?.id ?? DateTime.now().toString(),
+                          id: category?.id ??Uuid().v4(),
                           name: _nameController.text,
                           // type: _selectedType,
                           userId: user.uid,
