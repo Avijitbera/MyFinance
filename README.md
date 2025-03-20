@@ -1,16 +1,5 @@
 # MyFinance
 
-A Flutter application for managing personal finances with features like transaction tracking, recurring transactions, and cloud synchronization.
-
-## Features
-
-- Track income and expenses
-- Categorize transactions
-- Set up recurring transactions with notifications
-- Offline-first with local storage
-- Cloud synchronization with Firebase
-- Beautiful charts and analytics
-- User authentication
 
 
 ## Setup Instructions
@@ -33,10 +22,6 @@ flutter pub get
    - Download and add the configuration files:
      - For Android: Place `google-services.json` in `android/app/`
      - For iOS: Place `GoogleService-Info.plist` in `ios/Runner/`
-
-4. Configure Firebase in your project:
-   - Follow Firebase Flutter setup guide for your platform
-   - Enable required Firebase services in the Firebase Console
 
 ## Running the App
 
