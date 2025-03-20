@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:myfinance/auth_screen.dart';
+import 'package:myfinance/notification_service.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'finance_provider.dart';
@@ -8,6 +9,8 @@ import 'category_screen.dart';
 import 'finance_model.dart';
 import 'add_transaction_screen.dart';
 import 'transaction_chart.dart';
+import 'auth_provider.dart' as auth_provider;
+import 'transaction_details_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,9 +28,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void initState() {
+    NotificationService().initialize(context);
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<FinanceProvider>(context, listen: false).initialize();
+      Provider.of<auth_provider.AuthProvider>(context, listen: false).updateUserFcmToken();
     });
   }
 
@@ -148,6 +153,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                 color: transaction.type == 'Income'
                                     ? Colors.green
                                     : Colors.red,
+                              ),
+                            ),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => TransactionDetailsScreen(
+                                  transaction: transaction,
+                                ),
                               ),
                             ),
                           );

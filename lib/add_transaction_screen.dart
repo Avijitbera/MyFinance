@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -100,8 +101,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               ElevatedButton(
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
+                    var user = FirebaseAuth.instance.currentUser;
                     provider.addTransaction(Transaction(
                       id: Uuid().v4(),
+                      userId: user?.uid ?? "",
                       amount: _selectedType == 'Expense'
                           ? -double.parse(_amountController.text)
                           : double.parse(_amountController.text),

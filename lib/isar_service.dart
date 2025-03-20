@@ -121,6 +121,28 @@ void saveCategoryIfNotExists(Category category)async{
     });
   }
 
+  Future<void> updateTransaction(finance.Transaction transaction) async {
+    await isar.writeTxn(() async {
+      var tr = await isar.transactions.filter().idEqualTo(transaction.id).findFirst();
+      if(tr != null){
+        await isar.transactions.filter().idEqualTo(transaction.id).deleteFirst();
+        tr = tr.copyWith(amount: transaction.amount, 
+        title: transaction.title, 
+        date: transaction.date, 
+        type: transaction.type,
+        );
+        var r = await isar.transactions.put(tr);
+        print(r);
+      }
+    });
+  }
+
+  Future<void> deleteTransaction(finance.Transaction transaction) async {
+    await isar.writeTxn(() async {
+      await isar.transactions.filter().idEqualTo(transaction.id).deleteAll();
+    });
+  }
+
   Future<void> syncWithFirestore() async {
     final unsyncedTransactions = await isar.transactions
         .where()

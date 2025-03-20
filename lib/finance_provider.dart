@@ -1,4 +1,3 @@
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,9 +7,11 @@ import 'package:uuid/uuid.dart';
 import 'category_model.dart';
 import 'finance_model.dart' as finance;
 import 'isar_service.dart';
+import 'notification_service.dart';
 
 class FinanceProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final NotificationService _notificationService;
   bool _isSyncing = false;
   bool _isOnline = true;
 
@@ -25,6 +26,10 @@ class FinanceProvider extends ChangeNotifier {
   List<finance.Transaction> get transactions => _transactions; // Temporary empty list, will implement Firestore stream later
   bool get isSyncing => _isSyncing;
 
+  FinanceProvider({
+    NotificationService? notificationService,
+  })  : _notificationService = notificationService ?? NotificationService();
+
   double getMoney()  {
     // final transactions = await _isarService.isar.transactions.where().findAll();
     return transactions.fold<double>(0, (e, v) => e + v.amount);
@@ -32,6 +37,7 @@ class FinanceProvider extends ChangeNotifier {
 
   Future<void> initialize() async {
     await _isarService.initialize();
+    // await _notificationService.initialize();
     // initializeDefaultCategories();
     
     var _result = await _isarService.getTransections();
@@ -92,10 +98,16 @@ class FinanceProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _checkConnectivity() async {
-    Connectivity().onConnectivityChanged.listen((result) {
+  void _checkConnectivity() async {
+    final connectivityResult = await Connectivity().checkConnectivity();
+    _isOnline = connectivityResult != ConnectivityResult.none;
+    notifyListeners();
+  }
+
+  void _setupConnectivityListener() {
+    Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
       _isOnline = result != ConnectivityResult.none;
-      if (_isOnline) _syncCloudWithLocal();
+      notifyListeners();
     });
   }
 
@@ -103,14 +115,53 @@ class FinanceProvider extends ChangeNotifier {
     _transactions.add(transaction);
     notifyListeners();
     await _isarService.addTransaction(transaction);
+
     if (_isOnline) {
       final doc = _firestore.collection('transactions').doc(transaction.id);
       transaction.firestoreId = doc.id;
       await doc.set(transaction.toMap());
-     
     }
 
     notifyListeners();
+  }
+
+  Future<void> updateTransaction(finance.Transaction transaction) async {
+    // Update local state first
+    final index = _transactions.indexWhere((t) => t.id == transaction.id);
+    if (index != -1) {
+      _transactions[index] = transaction;
+      notifyListeners();
+    }
+
+    // Update local database
+    await _isarService.updateTransaction(transaction);
+
+    // Update Firestore if online
+    if (_isOnline && transaction.id != null) {
+      await _firestore
+          .collection('transactions')
+          .doc(transaction.id)
+          .update(transaction.toMap());
+    }
+  }
+
+  Future<void> deleteTransaction(finance.Transaction transaction) async {
+    // Update local state first
+    _transactions.removeWhere((t) => t.id == transaction.id);
+    notifyListeners();
+
+    // Delete from local database
+    await _isarService.deleteTransaction(transaction);
+    
+    // Cancel notification if it's a recurring transaction
+    if (transaction.isRecurring) {
+      // await _notificationService.cancelRecurringNotification(transaction);
+    }
+    
+    // Delete from Firestore if online
+    if (_isOnline && transaction.firestoreId != null) {
+      await _firestore.collection('transactions').doc(transaction.firestoreId).delete();
+    }
   }
 
   Future<void> addCategory(Category category) async {
@@ -143,38 +194,56 @@ class FinanceProvider extends ChangeNotifier {
 
   Future<void> syncLocalWithCloud() async {
     if (!_isOnline) return;
+    
     _isSyncing = true;
     notifyListeners();
-    await _isarService.syncWithFirestore();
-
-    // for (var transaction in localTransactions) {
-    //   if (transaction.firestoreId == null) {
-    //     final doc = _firestore.collection('transactions').doc();
-    //     batch.set(doc, {
-    //       'amount': transaction.amount,
-    //       'title': transaction.title,
-    //       'date': transaction.date,
-    //       'type': transaction.type,
-    //     });
-    //     transaction.firestoreId = doc.id;
-    //   }
-    // }
-    // await batch.commit();
     
-    _isSyncing = false;
-    notifyListeners();
+    try {
+      final snapshot = await _firestore.collection('transactions').get();
+      final cloudTransactions = snapshot.docs
+          .map((doc) => finance.Transaction.fromJson(doc.data()))
+          .toList();
+      
+      // Update local transactions with cloud data
+      for (var cloudTransaction in cloudTransactions) {
+        final localIndex = _transactions.indexWhere((t) => t.id == cloudTransaction.id);
+        if (localIndex == -1) {
+          _transactions.add(cloudTransaction);
+          await _isarService.addTransaction(cloudTransaction);
+        } else {
+          _transactions[localIndex] = cloudTransaction;
+          await _isarService.updateTransaction(cloudTransaction);
+        }
+      }
+      
+      // Remove local transactions that don't exist in cloud
+      final cloudIds = cloudTransactions.map((t) => t.id).toSet();
+      final localIds = _transactions.map((t) => t.id).toSet();
+      final toDelete = localIds.difference(cloudIds);
+      
+      for (var id in toDelete) {
+        final transaction = _transactions.firstWhere((t) => t.id == id);
+        await deleteTransaction(transaction);
+      }
+      
+      notifyListeners();
+    } finally {
+      _isSyncing = false;
+      notifyListeners();
+    }
   }
-
 
   Future<void> clearAllData() async {
     _transactions.clear();
     _categories.clear();
     notifyListeners();
     await _isarService.clearAllData();
+    // await _notificationService.cancelAllNotifications();
   }
 
   Future<void> _syncCloudWithLocal() async {
-    final snapshot = await _firestore.collection('transactions').orderBy("date", descending: true).get();
+    var user = FirebaseAuth.instance.currentUser;
+    final snapshot = await _firestore.collection('transactions').where("userId", isEqualTo: user?.uid).orderBy("date", descending: true).get();
     final remoteTransactions = snapshot.docs.map((doc) {
       return finance.Transaction(
         id: doc['id'],
@@ -188,6 +257,7 @@ class FinanceProvider extends ChangeNotifier {
         isid: doc['isid'],
         notificationTime: doc['notificationTime'],
         recurrenceFrequency: doc['recurrenceFrequency'],  
+        userId: doc['userId']
       );
     }).toList();
     if(remoteTransactions.isEmpty) return;

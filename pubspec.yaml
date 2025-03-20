@@ -21,6 +21,7 @@ dependencies:
   intl: ^0.18.1
   connectivity_plus: ^4.0.2
   uuid: ^3.0.7
+  
 
   cupertino_icons: ^1.0.8
   firebase_core: ^3.12.1
@@ -32,6 +33,7 @@ dependencies:
     git: 
       url: https://github.com/MrLittleWhite/isar_flutter_libs.git
   path_provider: ^2.1.5
+  firebase_messaging: ^15.2.4
   
   
   # chart_flutter: ^0.6.0

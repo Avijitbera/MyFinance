@@ -16,6 +16,7 @@ class Transaction {
   final String? notificationTime;
   final String category;
   Id isid = Isar.autoIncrement;
+  final String userId;
 
   Transaction({
     required this.id,
@@ -28,8 +29,30 @@ class Transaction {
     this.isRecurring = false,
     this.recurrenceFrequency,
     this.notificationTime,
-    required this.category
+    required this.category,
+    required this.userId
   });
+
+  Transaction copyWith({
+    double? amount,
+    String? title,
+    DateTime? date,
+    String? type,
+  }){
+    return Transaction(
+      id: id,
+      amount: amount ?? this.amount,
+      title: title ?? this.title,
+      date: date ?? this.date,
+      type: type ?? this.type,
+      firestoreId: firestoreId ?? this.firestoreId,
+      isRecurring: isRecurring ?? this.isRecurring,
+      recurrenceFrequency: recurrenceFrequency ?? this.recurrenceFrequency,
+      notificationTime: notificationTime ?? this.notificationTime,
+      category: category ?? this.category,
+      userId: userId ?? this.userId,
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -43,7 +66,8 @@ class Transaction {
       'notificationTime': notificationTime,
       'category':category,
       'isid': isid,
-      'id':id
+      'id':id,
+      'userId':userId
     };
   }
 
@@ -60,6 +84,7 @@ class Transaction {
       notificationTime: json['notificationTime'],
       category: json['category'],
       isid: json['isid'],
+      userId: json['userId']
     );
   }
 }
